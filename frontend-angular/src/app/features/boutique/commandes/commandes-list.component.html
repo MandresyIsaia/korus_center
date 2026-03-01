@@ -1,0 +1,146 @@
+<div class="orders-page">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header__info">
+      <h2>Commandes</h2>
+      <p>Gérez vos commandes clients</p>
+    </div>
+    <div class="page-actions">
+      <button type="button" class="btn btn--primary">
+        <span class="material-symbols-outlined btn__icon">download</span>
+        Exporter
+      </button>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-card__icon">
+        <span class="material-symbols-outlined">receipt_long</span>
+      </div>
+      <div class="stat-card__content">
+        <span class="stat-card__value">{{ stats.total }}</span>
+        <span class="stat-card__label">Total commandes</span>
+      </div>
+    </div>
+    <div class="stat-card stat-card--orange">
+      <div class="stat-card__icon">
+        <span class="material-symbols-outlined">hourglass_empty</span>
+      </div>
+      <div class="stat-card__content">
+        <span class="stat-card__value">{{ stats.pending }}</span>
+        <span class="stat-card__label">En attente</span>
+      </div>
+    </div>
+    <div class="stat-card stat-card--blue">
+      <div class="stat-card__icon">
+        <span class="material-symbols-outlined">sync</span>
+      </div>
+      <div class="stat-card__content">
+        <span class="stat-card__value">{{ stats.processing }}</span>
+        <span class="stat-card__label">En cours</span>
+      </div>
+    </div>
+    <div class="stat-card stat-card--green">
+      <div class="stat-card__icon">
+        <span class="material-symbols-outlined">payments</span>
+      </div>
+      <div class="stat-card__content">
+        <span class="stat-card__value">{{ formatCurrency(stats.revenue) }}</span>
+        <span class="stat-card__label">Revenus (livrées)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters-bar">
+    <div class="search-box">
+      <span class="material-symbols-outlined">search</span>
+      <input type="text" [(ngModel)]="searchQuery" placeholder="N° commande, client..." />
+    </div>
+
+    <div class="status-filters">
+      <button class="status-filter" 
+              [class.active]="selectedStatus === ''"
+              (click)="selectedStatus = ''">
+        Toutes
+      </button>
+      @for (status of statuses; track status.value) {
+        <button class="status-filter" 
+                [class.active]="selectedStatus === status.value"
+                [class]="'status-filter--' + status.value"
+                (click)="selectedStatus = status.value">
+          <span class="material-symbols-outlined">{{ status.icon }}</span>
+          {{ status.label }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- Orders List -->
+  <div class="orders-list">
+    @for (order of filteredOrders; track order._id) {
+      <div class="order-card" [class]="'order-card--' + order.orderCategory.value">
+        <div class="order-card__header">
+          <div class="order-card__info">
+            <a [routerLink]="['/boutique/commandes', order._id]" class="order-number">{{ order._id }}</a>
+            <span class="order-date">{{ formatDate(order.created_at) }}</span>
+
+          </div>
+          <span class="status-badge" [class]="'status-badge--' + getStatusLabel(order.orderCategory.value)">
+            <span class="material-symbols-outlined">{{ getStatusInfo(order.orderCategory.value).icon }}</span>
+            {{ order.orderCategory.value }}
+          </span>
+        </div>
+
+        <div class="order-card__body">
+          <div class="order-customer">
+            <span class="material-symbols-outlined">person</span>
+            <div class="customer-info">
+              <span class="customer-name">{{ order.buyer.name }}</span>
+              <span class="customer-contact">{{ order.buyer.email }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="order-card__footer">
+          <div class="order-total">
+            <span class="total-label">Total</span>
+            <span class="total-value">{{ formatCurrency(order.total) }}</span>
+          </div>
+          <!-- <div class="order-payment">
+            <span class="material-symbols-outlined">credit_card</span>
+            {{ order.paymentMethod }}
+          </div> -->
+
+          <div class="order-actions">
+            @if (getStatusLabel(order.orderCategory.value) !== 'Annulée' && getStatusLabel(order.orderCategory.value) !== 'delivered') {
+              @if (getNextStatus(order.orderCategory.value); as nextStatus) {
+                <button class="btn btn--sm btn--primary" (click)="updateStatus(order._id?? '', nextStatus)">
+                  <span class="material-symbols-outlined">{{ getStatusInfo(nextStatus).icon }}</span>
+                  {{ getStatusInfo(nextStatus).label }}
+                </button>
+              }
+              @if (order.orderCategory.value === 'En attente') {
+                <button class="btn btn--sm btn--danger" (click)="updateStatus(order._id?? '', 'Annulée')">
+                  <span class="material-symbols-outlined">close</span>
+                </button>
+              }
+            }
+            <a [routerLink]="['/boutique/commandes', order._id]" class="btn btn--sm btn--outline">
+              <span class="material-symbols-outlined">visibility</span>
+              Détails
+            </a>
+          </div>
+        </div>
+      </div>
+    } @empty {
+      <div class="empty-state">
+        <span class="material-symbols-outlined">inbox</span>
+        <h4>Aucune commande</h4>
+        <p>Aucune commande ne correspond à vos critères</p>
+      </div>
+    }
+  </div>
+</div>

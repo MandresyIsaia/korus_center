@@ -1,0 +1,245 @@
+import { Component, signal, computed, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { RouterLink, ActivatedRoute } from '@angular/router';
+import { ShopService, ShopCategory } from '../../../core/services/shop/shop.service';
+import { OpeningHoursService } from '../../../core/services/shop/opening-hours.service';
+import { NoticeService, type ShopNoticeSummaryDto } from '../../../core/services/notice/notice.service';
+import type { Shop } from '../../../core/models/shop/shop.model';
+import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
+
+interface BoutiqueDiscovery {
+  id: string;
+  name: string;
+  categoryId: string;
+  categoryLabel: string;
+  logoUrl?: string;
+  rating: number;
+  reviewCount: number;
+  isOpen: boolean;
+  floor: number;
+  zone?: string;
+  description: string;
+  popularity: number;
+}
+
+type SortOption = 'name' | 'rating' | 'popularity';
+type ViewMode = 'grid' | 'list';
+
+@Component({
+  selector: 'app-boutiques-discovery',
+  standalone: true,
+  imports: [CommonModule, FormsModule, RouterLink],
+  templateUrl: './boutiques-discovery.component.html',
+  styleUrl: './boutiques-discovery.component.css'
+})
+export class BoutiquesDiscoveryComponent implements OnInit {
+  categories = signal<ShopCategory[]>([]);
+  
+  // Search and filters
+  searchQuery = signal('');
+  selectedCategory = signal<string>('');
+  selectedFloor = signal<number | ''>('');
+  onlyOpen = signal(false);
+  onlyFavorites = signal(false);
+  sortBy = signal<SortOption>('popularity');
+  viewMode = signal<ViewMode>('grid');
+
+  boutiques = signal<BoutiqueDiscovery[]>([]);
+  favoriteShopIds = signal<string[]>([]);
+
+  constructor(
+    private shopService: ShopService,
+    private openingHours: OpeningHoursService,
+    private noticeService: NoticeService,
+    private route: ActivatedRoute
+  ) {}
+
+  ngOnInit(): void {
+    this.route.queryParams.subscribe(params => {
+      const cat = params['category'];
+      if (cat) {
+        this.selectedCategory.set(cat);
+      }
+    });
+
+    forkJoin({
+      shops: this.shopService.getActiveShops(),
+      favoriteIds: this.shopService.getMyFavoriteShopIds().pipe(catchError(() => of([] as string[]))),
+      categories: this.shopService.getShopCategories().pipe(catchError(() => of([] as ShopCategory[])))
+    })
+      .pipe(
+        switchMap(({ shops, favoriteIds, categories }) => {
+          this.categories.set(categories);
+          const ids = shops.map(s => s._id).filter(Boolean);
+          this.favoriteShopIds.set(favoriteIds);
+          return this.noticeService.getShopSummaries(ids).pipe(
+            map((summaries) => ({ shops, summaries })),
+            catchError(() => of({ shops, summaries: [] as ShopNoticeSummaryDto[] }))
+          );
+        })
+      )
+      .subscribe({
+        next: ({ shops, summaries }) => {
+          const byId: Record<string, ShopNoticeSummaryDto> = {};
+          for (const s of summaries) byId[s.shopId] = s;
+          this.boutiques.set(shops.map(shop => this.mapShopToDiscovery(shop, byId[shop._id])));
+        },
+        error: () => this.boutiques.set([])
+      });
+  }
+
+  // Filtered and sorted boutiques
+  filteredBoutiques = computed(() => {
+    let result = this.boutiques();
+
+    // Search filter
+    const query = this.searchQuery().toLowerCase();
+    if (query) {
+      result = result.filter(b => 
+        b.name.toLowerCase().includes(query) ||
+        b.categoryLabel.toLowerCase().includes(query) ||
+        b.zone?.toLowerCase().includes(query) ||
+        b.description.toLowerCase().includes(query)
+      );
+    }
+
+    // Category filter
+    if (this.selectedCategory()) {
+      result = result.filter(b => b.categoryId === this.selectedCategory());
+    }
+
+    // Floor filter
+    const floorFilter = this.selectedFloor();
+    if (floorFilter !== '' && floorFilter !== null && floorFilter !== undefined) {
+      const floorNum = typeof floorFilter === 'string' ? Number(floorFilter) : floorFilter;
+      result = result.filter(b => b.floor === floorNum);
+    }
+
+    // Open status filter
+    if (this.onlyOpen()) {
+      result = result.filter(b => b.isOpen);
+    }
+
+    if (this.onlyFavorites()) {
+      const favorites = new Set(this.favoriteShopIds());
+      result = result.filter(b => favorites.has(b.id));
+    }
+
+    // Sort
+    const sortBy = this.sortBy();
+    result = [...result].sort((a, b) => {
+      switch (sortBy) {
+        case 'name':
+          return a.name.localeCompare(b.name);
+        case 'rating':
+          return b.rating - a.rating;
+        case 'popularity':
+          return b.popularity - a.popularity;
+        default:
+          return 0;
+      }
+    });
+
+    return result;
+  });
+
+  // Étages disponibles (triage : RDC en premier, puis 1, 2, 3...)
+  floors = computed(() => {
+    const unique = new Set(this.boutiques().map(b => b.floor).filter(f => !Number.isNaN(f)));
+    return Array.from(unique).sort((a, b) => a - b);
+  });
+
+  onFloorChange(value: string | number | ''): void {
+    if (value === '' || value === null || value === undefined) {
+      this.selectedFloor.set('');
+    } else {
+      this.selectedFloor.set(typeof value === 'string' ? Number(value) : value);
+    }
+  }
+
+  setViewMode(mode: ViewMode): void {
+    this.viewMode.set(mode);
+  }
+
+  setSortBy(sort: SortOption): void {
+    this.sortBy.set(sort);
+  }
+
+  getCategoryLabel(categoryId: string): string {
+    const category = this.categories().find(c => c._id === categoryId);
+    return category?.value ?? '—';
+  }
+
+  getFloorLabel(floor: number): string {
+    if (floor === undefined || floor === null || Number.isNaN(floor)) return '—';
+    if (floor === 0) return 'Rez-de-chaussée';
+    if (floor === 1) return '1er étage';
+    return `Étage ${floor}`;
+  }
+
+  private mapShopToDiscovery(shop: Shop, summary?: ShopNoticeSummaryDto): BoutiqueDiscovery {
+    const categoryId = this.extractCategoryId(shop.shop_category);
+    const categoryLabel = this.getCategoryLabelFromShop(shop.shop_category);
+    const floor = this.extractFloor(shop.door);
+    const rating = summary?.reviewCount ? summary.rating : 0;
+    const reviewCount = summary?.reviewCount ?? 0;
+    const isActive = this.isStatusActive(shop.shop_status?.value) || shop.is_accepted === true;
+
+    return {
+      id: shop._id,
+      name: shop.name,
+      categoryId,
+      categoryLabel,
+      logoUrl: shop.logo,
+      rating,
+      reviewCount,
+      isOpen: isActive && this.openingHours.isShopOpenNow(shop),
+      floor,
+      zone: this.extractZone(shop.door),
+      description: shop.description ?? '',
+      popularity: reviewCount
+    };
+  }
+
+  private extractCategoryId(category?: any): string {
+    if (!category) return '';
+    if (typeof category === 'string') return category;
+    if (typeof category === 'object' && category._id) return category._id;
+    return '';
+  }
+
+  private getCategoryLabelFromShop(category?: any): string {
+    if (!category) return '—';
+    if (typeof category === 'object' && category.value) return category.value;
+    const found = this.categories().find(c => c._id === category);
+    return found?.value ?? '—';
+  }
+
+  private extractFloor(door: Shop['door']): number {
+    if (!door || typeof door !== 'object') return 0;
+    const floor = (door as { floor?: unknown }).floor;
+    if (typeof floor === 'string') return this.parseFloorNumber(floor);
+    if (typeof floor === 'object' && floor && 'value' in floor) {
+      return this.parseFloorNumber((floor as { value?: string }).value ?? '');
+    }
+    return 0;
+  }
+
+  private extractZone(door: Shop['door']): string | undefined {
+    if (!door || typeof door !== 'object') return undefined;
+    const value = (door as { value?: unknown }).value;
+    return typeof value === 'string' ? value : undefined;
+  }
+
+  private parseFloorNumber(value: string): number {
+    if (!value || typeof value !== 'string') return 0;
+    const match = value.match(/(-?\d+)/);
+    return match ? Number.parseInt(match[1], 10) : 0;
+  }
+
+  private isStatusActive(value?: string): boolean {
+    if (!value) return false;
+    return value.toLowerCase().includes('active');
+  }
+}

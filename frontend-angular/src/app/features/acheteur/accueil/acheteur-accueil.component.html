@@ -1,0 +1,113 @@
+<div class="accueil-page">
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero__content">
+      <h1>Bienvenue, {{ userName() }} !</h1>
+      <p>Découvrez les meilleures offres du centre commercial KORUS</p>
+      <div class="hero__actions">
+        <a routerLink="/acheteur/boutiques" class="btn btn--primary">
+          <span class="material-symbols-outlined">storefront</span>
+          Explorer les boutiques
+        </a>
+        <a routerLink="/acheteur/carte" class="btn btn--outline">
+          <span class="material-symbols-outlined">map</span>
+          Voir la carte
+        </a>
+      </div>
+    </div>
+    <div class="hero__stats">
+      <div class="hero-stat">
+        <span class="hero-stat__value">{{ totalBoutiques() }}</span>
+        <span class="hero-stat__label">Boutiques</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat__value">{{ categories().length }}</span>
+        <span class="hero-stat__label">Catégories</span>
+      </div>
+      @if (promotionsCount() > 0) {
+        <div class="hero-stat">
+          <span class="hero-stat__value">{{ promotionsCount() }}</span>
+          <span class="hero-stat__label">Promos actives</span>
+        </div>
+      }
+    </div>
+  </section>
+
+  <!-- Categories -->
+  <section class="section">
+    <div class="section__header">
+      <h2>
+        <span class="material-symbols-outlined">category</span>
+        Catégories
+      </h2>
+    </div>
+    <div class="categories-grid">
+      @for (cat of categories(); track cat._id) {
+        <a routerLink="/acheteur/boutiques" [queryParams]="{category: cat._id}" class="category-card">
+          <span class="material-symbols-outlined">{{ cat.icon }}</span>
+          <span class="category-card__label">{{ cat.value }}</span>
+          <span class="category-card__count">{{ cat.count }}</span>
+        </a>
+      }
+    </div>
+  </section>
+
+  <!-- Featured Boutiques -->
+  <section class="section">
+    <div class="section__header">
+      <h2>
+        <span class="material-symbols-outlined">storefront</span>
+        Boutiques populaires
+      </h2>
+      <a routerLink="/acheteur/boutiques" class="section__link">
+        Voir toutes
+        <span class="material-symbols-outlined">chevron_right</span>
+      </a>
+    </div>
+    <div class="boutiques-grid">
+      @for (boutique of featuredBoutiques(); track boutique.id) {
+        <a [routerLink]="['/acheteur/boutiques', boutique.id]" class="boutique-card">
+          <div class="boutique-card__logo">
+            @if (boutique.logo) {
+              <img [src]="boutique.logo" [alt]="boutique.name" />
+            } @else {
+              <span class="material-symbols-outlined">store</span>
+            }
+            @if (boutique.isOpen) {
+              <span class="boutique-card__status boutique-card__status--open">Ouvert</span>
+            } @else {
+              <span class="boutique-card__status boutique-card__status--closed">Fermé</span>
+            }
+          </div>
+          <div class="boutique-card__content">
+            <h4>{{ boutique.name }}</h4>
+            <span class="boutique-card__category">{{ boutique.category }}</span>
+            <div class="boutique-card__rating">
+              <span class="material-symbols-outlined">star</span>
+              <span>{{ boutique.rating }}</span>
+              <span class="rating-count">({{ boutique.reviewCount }} avis)</span>
+            </div>
+          </div>
+        </a>
+      }
+    </div>
+  </section>
+
+  <!-- Quick Actions -->
+  <section class="quick-actions">
+    <a routerLink="/acheteur/carte" class="quick-action quick-action--map">
+      <span class="material-symbols-outlined">map</span>
+      <div class="quick-action__content">
+        <h4>Carte interactive</h4>
+        <p>Trouvez votre chemin dans le centre</p>
+      </div>
+    </a>
+    <a routerLink="/acheteur/commandes" class="quick-action quick-action--orders">
+      <span class="material-symbols-outlined">local_shipping</span>
+      <div class="quick-action__content">
+        <h4>Mes commandes</h4>
+        <p>Suivez vos livraisons</p>
+      </div>
+    </a>
+  </section>
+</div>

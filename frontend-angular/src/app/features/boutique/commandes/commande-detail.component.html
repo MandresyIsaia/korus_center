@@ -1,0 +1,224 @@
+<div class="order-detail-page">
+  <!-- Header -->
+  <div class="page-header">
+    <a routerLink="/boutique/commandes" class="back-link">
+      <span class="material-symbols-outlined">arrow_back</span>
+      Retour aux commandes
+    </a>
+    <div class="header__main">
+      <div class="header__info">
+        <h2>{{ orderApi?._id }}</h2>
+        <span class="order-date">Créée le {{ formatDate2(orderApi?.created_at) }}</span>
+      </div>
+      <span class="status-badge" [class]="'status-badge--' + getStatusLabel(orderApi?.orderCategory?.value?? '')">
+        <span class="material-symbols-outlined">{{ getStatusInfo2(orderApi?.orderCategory?.value?? '').icon }}</span>
+        {{ getStatusInfo2(orderApi?.orderCategory?.value?? '').value }}
+      </span>
+    </div>
+    <div class="page-actions">
+      <button type="button" class="btn btn--secondary" (click)="printOrder()">
+        <span class="material-symbols-outlined btn__icon">print</span>
+        Imprimer
+      </button>
+      <button type="button" class="btn btn--secondary" (click)="exportReceipt()">
+        <span class="material-symbols-outlined btn__icon">receipt</span>
+        Reçu
+      </button>
+      <button type="button" class="btn btn--primary" (click)="exportInvoice()">
+        <span class="material-symbols-outlined btn__icon">description</span>
+        Facture PDF
+      </button>
+    </div>
+  </div>
+
+  <!-- Status Timeline -->
+  <div class="status-timeline card">
+    <h4>Suivi de la commande</h4>
+    <div class="timeline">
+      @for (status of statuses2.slice(0, 4); track status.value; let i = $index) {
+        <div class="timeline__step" 
+             [class.timeline__step--active]="i <= getStatusIndex2(orderApi?.orderCategory?.value ?? '')"
+             [class.timeline__step--current]="status.value === orderApi?.orderCategory?.value">
+          <div class="timeline__icon">
+            <span class="material-symbols-outlined">{{ status.icon }}</span>
+          </div>
+          <span class="timeline__label">{{ status.value }}</span>
+        </div>
+        @if (i < 3) {
+          <div class="timeline__connector" [class.timeline__connector--active]="i < getStatusIndex2(orderApi?.orderCategory?.value ?? '')"></div>
+        }
+      }
+    </div>
+
+    @if (orderApi?.orderCategory?.value !== 'Livrée' && orderApi?.orderCategory?.value !== 'Annulée') {
+      <div class="status-actions">
+        <span class="status-actions__label">Changer le statut :</span>
+        @if (orderApi?.orderCategory?.value === 'En attente') {
+          <button class="btn btn--sm btn--primary" (click)="updateStatus2('Confirmée')">
+            <span class="material-symbols-outlined">check_circle</span>
+            Confirmer
+          </button>
+          <button class="btn btn--sm btn--danger" (click)="updateStatus2('Annulée')">
+            <span class="material-symbols-outlined">cancel</span>
+            Annuler
+          </button>
+        }
+        @if (orderApi?.orderCategory?.value === 'Confirmée') {
+          <button class="btn btn--sm btn--primary" (click)="updateStatus2('En préparation')">
+            <span class="material-symbols-outlined">inventory_2</span>
+            En préparation
+          </button>
+        }
+        @if (orderApi?.orderCategory?.value === 'En préparation') {
+          <button class="btn btn--sm btn--primary" (click)="updateStatus2('Livrée')">
+            <span class="material-symbols-outlined">local_shipping</span>
+            Marquer livrée
+          </button>
+        }
+      </div>
+    }
+  </div>
+
+  <div class="detail-grid">
+    <!-- Order Items -->
+    <section class="card order-items-card">
+      <h4>Articles commandés</h4>
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th>Produit</th>
+            <th>Prix unitaire</th>
+            <th>Quantité</th>
+            <th>Promotion</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of orderApi?.orderItems; track item._id) {
+            <tr>
+              <td>
+                <div class="product-cell">
+                  <div class="product-image">
+                    <span class="material-symbols-outlined">image</span>
+                  </div>
+                  <div class="product-info">
+                    <span class="product-name">{{ item.stock.product.name }}</span>
+                    <span class="product-sku">{{ item.stock.product.reference }}</span>
+                  </div>
+                </div>
+              </td>
+              <td>{{ formatCurrency(item.unit_price) }}</td>
+              <td>{{ item.quantity }}</td>
+              <td>{{ item.promotion_percentage }}%</td>
+              <td class="td-total">{{ formatCurrency((item.unit_price * item.quantity)*(1-(item.promotion_percentage/100))) }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+
+      <div class="order-totals">
+        <!-- <div class="total-row">
+          <span>Sous-total</span>
+          <span>{{ formatCurrency(order().subtotal) }}</span>
+        </div>
+        <div class="total-row">
+          <span>Livraison</span>
+          <span>{{ formatCurrency(order().shipping) }}</span>
+        </div> -->
+        <!-- @if (order().discount > 0) {
+          <div class="total-row total-row--discount">
+            <span>Réduction</span>
+            <span>-{{ formatCurrency(order().discount) }}</span>
+          </div>
+        } -->
+        <div class="total-row total-row--final">
+          <span>Total</span>
+          <span>{{ formatCurrency(orderApi?.total) }}</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Customer & Payment Info -->
+    <div class="side-cards">
+      <!-- Customer Info -->
+      <section class="card">
+        <h4>
+          <span class="material-symbols-outlined">person</span>
+          Client
+        </h4>
+        <div class="info-block">
+          <strong>{{ orderApi?.buyer.name }}</strong>
+          <a [href]="'mailto:' + orderApi?.buyer.email" class="info-link">{{ orderApi?.buyer.email }}</a>
+          <a [href]="'tel:' + orderApi?.buyer.phone" class="info-link">{{ orderApi?.buyer.phone }}</a>
+        </div>
+        <div class="info-block">
+          <span class="info-label">Adresse de livraison</span>
+          <p class="info-address">{{ orderApi?.buyer.adresse }}</p>
+        </div>
+      </section>
+
+      <!-- Payment Info -->
+      <!-- <section class="card">
+        <h4>
+          <span class="material-symbols-outlined">credit_card</span>
+          Paiement
+        </h4>
+        <div class="payment-info">
+          <div class="payment-row">
+            <span>Méthode</span>
+            <span class="payment-method">{{ order().paymentMethod }}</span>
+          </div>
+          <div class="payment-row">
+            <span>Statut</span>
+            <span class="payment-status" [class]="'payment-status--' + order().paymentStatus">
+              @switch (order().paymentStatus) {
+                @case ('paid') { <span class="material-symbols-outlined">check_circle</span> Payé }
+                @case ('pending') { <span class="material-symbols-outlined">schedule</span> En attente }
+                @case ('refunded') { <span class="material-symbols-outlined">undo</span> Remboursé }
+              }
+            </span>
+          </div>
+          <div class="payment-row payment-row--total">
+            <span>Montant</span>
+            <span>{{ formatCurrency(order().total) }}</span>
+          </div>
+        </div>
+      </section> -->
+
+      <!-- Notes -->
+      <!-- @if (order().notes) {
+        <section class="card">
+          <h4>
+            <span class="material-symbols-outlined">note</span>
+            Notes client
+          </h4>
+          <p class="order-notes">{{ order().notes }}</p>
+        </section>
+      } -->
+
+      <!-- History -->
+      <!-- <section class="card">
+        <h4>
+          <span class="material-symbols-outlined">history</span>
+          Historique
+        </h4>
+        <div class="history-list">
+          @for (entry of order().statusHistory; track $index) {
+            <div class="history-item">
+              <div class="history-icon" [class]="'history-icon--' + entry.status">
+                <span class="material-symbols-outlined">{{ getStatusInfo(entry.status).icon }}</span>
+              </div>
+              <div class="history-content">
+                <span class="history-status">{{ getStatusInfo(entry.status).label }}</span>
+                @if (entry.note) {
+                  <span class="history-note">{{ entry.note }}</span>
+                }
+                <span class="history-date">{{ formatShortDate(entry.date) }}</span>
+              </div>
+            </div>
+          }
+        </div>
+      </section> -->
+    </div>
+  </div>
+</div>

@@ -1,0 +1,250 @@
+<div class="stats-page">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header__info">
+      <h2>Statistiques</h2>
+      <p>Analysez les performances de votre boutique</p>
+    </div>
+    <div class="page-actions">
+      <button type="button" class="btn btn--primary" (click)="exportPDF()">
+        <span class="material-symbols-outlined btn__icon">picture_as_pdf</span>
+        Exporter PDF
+      </button>
+    </div>
+  </div>
+
+  <!-- Period Selector -->
+  <div class="card filters-card">
+    <h3>Filtres</h3>
+    <div class="filters">
+
+      <!-- Date de début -->
+      <div class="form-group">
+        <label>Date de début</label>
+        <input type="date" [(ngModel)]="startDate" />
+      </div>
+
+      <!-- Date de fin -->
+      <div class="form-group">
+        <label>Date de fin</label>
+        <input type="date" [(ngModel)]="endDate" />
+      </div>
+
+      <!-- Bouton appliquer -->
+      <div class="form-group">
+        <br>
+        <button class="apply-btn" (click)="applyPeriod()">Appliquer</button>
+      </div>
+  </div>
+</div>
+
+  <div #contentToConvert >
+  <!-- Main KPIs -->
+  <div class="kpi-grid">
+    <div class="kpi-card kpi-card--primary">
+      <div class="kpi-card__header">
+        <span class="material-symbols-outlined">payments</span>
+        <!-- <span class="kpi-card__trend kpi-card__trend--up">+12.5%</span> -->
+      </div>
+      <div class="kpi-card__value">{{ formatCurrency(statistiques?.stats?.orders?.stat[0]?.totalRevenue) }}</div>
+      <div class="kpi-card__label">Chiffre d'affaires</div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-card__header">
+        <span class="material-symbols-outlined">shopping_bag</span>
+        <!-- <span class="kpi-card__trend kpi-card__trend--up">+8.3%</span> -->
+      </div>
+      <div class="kpi-card__value">{{ statistiques?.stats?.orders?.stat[0]?.totalOrders }}</div>
+      <div class="kpi-card__label">Commandes</div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-card__header">
+        <span class="material-symbols-outlined">shopping_cart</span>
+      </div>
+      <div class="kpi-card__value">{{ formatCurrency(statistiques?.stats?.orders?.stat[0]?.averageBasket) }}</div>
+      <div class="kpi-card__label">Panier moyen</div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-card__header">
+        <span class="material-symbols-outlined">conversion_path</span>
+      </div>
+      <div class="kpi-card__value">{{ statistiques?.stats?.orders?.stat[0]?.deliveredPercent }}%</div>
+      <div class="kpi-card__label">Commandes livrées</div>
+    </div>
+
+    <div class="kpi-card kpi-card--warning">
+      <div class="kpi-card__header">
+        <span class="material-symbols-outlined">remove_shopping_cart</span>
+        <!-- <span class="kpi-card__trend kpi-card__trend--down">-2.1%</span> -->
+      </div>
+      <div class="kpi-card__value">{{ statistiques?.stats?.orders?.stat[0]?.cancelledPercent }}%</div>
+      <div class="kpi-card__label">Commandes annulées</div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-card__header">
+        <span class="material-symbols-outlined">undo</span>
+      </div>
+      <div class="kpi-card__value">{{ statistiques?.stats?.orders?.stat[0]?.deliveredPercent }}%</div>
+      <div class="kpi-card__label">Commandes en prépration</div>
+    </div>
+  </div>
+
+  <!-- Charts Row -->
+  <div class="charts-row">
+    <!-- Sales Chart -->
+    <section class="card chart-card">
+      <div class="card__header">
+        <h3>
+          <span class="material-symbols-outlined">bar_chart</span>
+          Ventes journalières
+        </h3>
+      </div>
+      <div class="chart-container">
+        <div class="bar-chart">
+          @for (day of statistiques?.stats?.revenueParMois?.caParMois; track day._id) {
+            <div class="bar-chart__item">
+              <div class="bar-chart__bar-wrapper">
+                <div class="bar-chart__bar" 
+                     [style.height.%]="getBarHeight2(day.CA)"
+                     [attr.data-value]="formatCurrency(day.CA)">
+                </div>
+              </div>
+              <span class="bar-chart__label">{{ getMois(day._id) }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    </section>
+
+    <!-- Promo Stats -->
+    <section class="card promo-card">
+      <div class="card__header">
+        <h3>
+          <span class="material-symbols-outlined">local_offer</span>
+          Promotions
+        </h3>
+      </div>
+      <div class="promo-stats">
+        <div class="promo-stat">
+          <span class="promo-stat__value">{{ statistiques?.stats?.orders?.stat[0]?.totalOrders }}</span>
+          <span class="promo-stat__label">Commandes totals</span>
+        </div>
+        <div class="promo-stat">
+          <span class="promo-stat__value">{{ statistiques?.stats?.orderItems?.globalStats[0]?.ordersWithPromo }}</span>
+          <span class="promo-stat__label">Commandes avec promo</span>
+        </div>
+        <div class="promo-stat">
+          <span class="promo-stat__value">{{ statistiques?.stats?.orderItems?.globalStats[0]?.avgReduction }}%</span>
+          <span class="promo-stat__label">Réduction moyenne</span>
+        </div>
+        <div class="promo-stat promo-stat--highlight">
+          <span class="promo-stat__value">{{ formatCurrency(statistiques?.stats?.orderItems?.globalStats[0]?.totalReduction) }}</span>
+          <span class="promo-stat__label">Économies clients</span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Products Analysis -->
+  <div class="products-row">
+    <!-- Top Products -->
+    <section class="card">
+      <div class="card__header">
+        <h3>
+          <span class="material-symbols-outlined">trending_up</span>
+          Produits les plus vendus
+        </h3>
+      </div>
+      <div class="products-list">
+        @for (product of statistiques?.stats?.orderItems?.top5Produits; track product._id; let i = $index) {
+          <div class="product-row">
+            <span class="product-rank" [class.product-rank--gold]="i === 0">{{ i + 1 }}</span>
+            <div class="product-info">
+              <span class="product-name">{{ product._id.name }}</span>
+              <span class="product-meta">{{ product.totalSold }} vendus • Stock: {{ product.stock }}</span>
+            </div>
+            <div class="product-revenue">
+              <span class="revenue-value">{{ formatCurrency(product.CA) }}</span>
+              <div class="revenue-bar">
+                <div class="revenue-fill" [style.width.%]="(product.CA / statistiques?.stats?.orders?.stat[0]?.totalRevenue) * 100"></div>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    </section>
+
+    <!-- Low Performers -->
+    <section class="card">
+      <div class="card__header">
+        <h3>
+          <span class="material-symbols-outlined">trending_down</span>
+          Produits à améliorer
+        </h3>
+      </div>
+      <div class="products-list">
+        @for (product of statistiques?.stats?.orderItems?.top3ProduitsFaibles; track product._id) {
+          <div class="product-row product-row--low">
+            <span class="material-symbols-outlined product-warning">warning</span>
+            <div class="product-info">
+              <span class="product-name">{{ product._id.name }}</span>
+              <span class="product-meta">{{ product.totalSold }} vendus • Stock: {{ product.stock }}</span>
+            </div>
+            <div class="product-conversion">
+              <span class="conversion-value">{{ formatCurrency(product.CA) }}</span>
+              <span class="conversion-label">revenue</span>
+            </div>
+          </div>
+        }
+      </div>
+      <div class="card__tip">
+        <span class="material-symbols-outlined">lightbulb</span>
+        <p>Envisagez de mettre ces produits en promotion ou d'améliorer leurs descriptions.</p>
+      </div>
+    </section>
+  </div>
+  </div>
+  <!-- Summary Cards -->
+  <!-- <div class="summary-row">
+    <div class="summary-card">
+      <div class="summary-icon summary-icon--blue">
+        <span class="material-symbols-outlined">visibility</span>
+      </div>
+      <div class="summary-content">
+        <span class="summary-value">2,456</span>
+        <span class="summary-label">Visites boutique</span>
+      </div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-icon summary-icon--green">
+        <span class="material-symbols-outlined">person_add</span>
+      </div>
+      <div class="summary-content">
+        <span class="summary-value">156</span>
+        <span class="summary-label">Nouveaux clients</span>
+      </div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-icon summary-icon--purple">
+        <span class="material-symbols-outlined">repeat</span>
+      </div>
+      <div class="summary-content">
+        <span class="summary-value">34%</span>
+        <span class="summary-label">Clients récurrents</span>
+      </div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-icon summary-icon--orange">
+        <span class="material-symbols-outlined">star</span>
+      </div>
+      <div class="summary-content">
+        <span class="summary-value">4.6/5</span>
+        <span class="summary-label">Note moyenne</span>
+      </div>
+    </div>
+  </div> -->
+</div>
