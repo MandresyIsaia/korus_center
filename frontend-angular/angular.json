@@ -17,7 +17,8 @@
         "build": {
           "builder": "@angular/build:application",
           "options": {
-            // "outputPath": "dist/m1p13mean-Isaia-Toky",
+            "outputPath": "dist/m1p13mean-Isaia-Toky",
+            "baseHref": "/",
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
             "assets": [
